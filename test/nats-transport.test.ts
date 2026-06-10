@@ -47,6 +47,13 @@ test('routes JSON-RPC frames over paired NATS subjects', async () => {
   server.close();
 });
 
+test('rejects empty subject tokens', () => {
+  assert.throws(
+    () => ahpNatsSubjects({ namespace: ' ', serverId: 'server', clientId: 'client' }),
+    /NATS subject token cannot be empty/,
+  );
+});
+
 class FakeNatsBroker implements NatsConnectionLike {
   private readonly subscriptions = new Map<string, Set<FakeSubscription>>();
 

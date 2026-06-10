@@ -20,5 +20,9 @@ export function ahpNatsSubjects(options: AhpNatsSubjectOptions): AhpNatsSubjectP
 }
 
 function sanitizeToken(value: string): string {
-  return value.replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'default';
+  const token = value.trim().replaceAll(/[^A-Za-z0-9_-]/g, '_');
+  if (!token) {
+    throw new Error('NATS subject token cannot be empty');
+  }
+  return token;
 }
