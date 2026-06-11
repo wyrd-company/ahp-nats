@@ -11,6 +11,8 @@ export type {
   AhpNatsTransportOptions,
   MsgLike,
   NatsConnectionLike,
+  NatsMsgLike,
+  NatsRequestOptions,
 } from './transport.js';
 export type {
   AhpNatsSubjectOptions,

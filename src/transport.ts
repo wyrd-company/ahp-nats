@@ -1,17 +1,30 @@
 import type { AhpTransport, JsonRpcMessage, TransportFrame } from '@microsoft/agent-host-protocol/client';
-import { StringCodec, type NatsConnection, type Subscription } from 'nats';
+import type { NatsConnection, Subscription } from '@nats-io/transport-node';
 
 import type { ServerTransport } from './types.js';
 
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+export interface NatsMsgLike {
+  readonly data: Uint8Array;
+  readonly reply?: string;
+  respond?(data?: Uint8Array): boolean;
+}
+
+export interface NatsRequestOptions {
+  readonly timeout?: number;
+  readonly signal?: AbortSignal;
+}
+
 export interface NatsConnectionLike {
-  publish(subject: string, data?: Uint8Array): void;
-  subscribe(subject: string): AsyncIterable<MsgLike> & { unsubscribe(): void };
+  publish(subject: string, data?: Uint8Array, options?: { reply?: string }): void;
+  request(subject: string, data?: Uint8Array, options?: NatsRequestOptions): Promise<NatsMsgLike>;
+  subscribe(subject: string, options?: { queue?: string }): AsyncIterable<NatsMsgLike> & { unsubscribe(): void };
   flush?(): Promise<void>;
 }
 
-export interface MsgLike {
-  readonly data: Uint8Array;
-}
+export type MsgLike = NatsMsgLike;
 
 export interface AhpNatsTransportOptions {
   readonly connection: NatsConnection | NatsConnectionLike;
@@ -20,8 +33,7 @@ export interface AhpNatsTransportOptions {
 }
 
 class NatsTextTransport {
-  private readonly codec = StringCodec();
-  private readonly subscription: Subscription | (AsyncIterable<MsgLike> & { unsubscribe(): void });
+  private readonly subscription: Subscription | (AsyncIterable<NatsMsgLike> & { unsubscribe(): void });
   private readonly readyPromise: Promise<void>;
   private readonly inbox: Array<string | null> = [];
   private waiter: ((message: string | null) => void) | undefined;
@@ -42,7 +54,7 @@ class NatsTextTransport {
       throw new Error('NATS transport closed');
     }
     await this.readyPromise;
-    this.options.connection.publish(this.options.outboundSubject, this.codec.encode(text));
+    this.options.connection.publish(this.options.outboundSubject, encoder.encode(text));
   }
 
   async recvText(): Promise<string | null> {
@@ -71,7 +83,7 @@ class NatsTextTransport {
   private async readLoop(): Promise<void> {
     try {
       for await (const message of this.subscription) {
-        this.deliver(this.codec.decode(message.data));
+        this.deliver(decoder.decode(message.data));
       }
     } finally {
       this.close();
