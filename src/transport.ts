@@ -1,7 +1,7 @@
 import type { AhpTransport, JsonRpcMessage, TransportFrame } from '@microsoft/agent-host-protocol/client';
 import { StringCodec, type NatsConnection, type Subscription } from 'nats';
 
-import type { JsonRpcMessage as ServerJsonRpcMessage, ServerTransport } from './types.js';
+import type { ServerTransport } from './types.js';
 
 export interface NatsConnectionLike {
   publish(subject: string, data?: Uint8Array): void;
@@ -100,13 +100,13 @@ export class NatsServerTransport implements ServerTransport {
     return this.inner.ready();
   }
 
-  send(message: ServerJsonRpcMessage | string): Promise<void> {
+  send(message: JsonRpcMessage | string): Promise<void> {
     return this.inner.sendText(typeof message === 'string' ? message : JSON.stringify(message));
   }
 
-  async recv(): Promise<ServerJsonRpcMessage | string | null> {
+  async recv(): Promise<TransportFrame | null> {
     const text = await this.inner.recvText();
-    return text === null ? null : text;
+    return text === null ? null : { kind: 'text', text };
   }
 
   close(): void {

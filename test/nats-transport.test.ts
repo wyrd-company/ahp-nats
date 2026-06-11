@@ -36,7 +36,9 @@ test('routes JSON-RPC frames over paired NATS subjects', async () => {
   await server.ready();
 
   await client.send({ jsonrpc: '2.0', id: 1, method: 'ping' });
-  assert.deepEqual(JSON.parse(String(await server.recv())), { jsonrpc: '2.0', id: 1, method: 'ping' });
+  const serverFrame = await server.recv();
+  assert.equal(serverFrame?.kind, 'text');
+  assert.deepEqual(JSON.parse(serverFrame.kind === 'text' ? serverFrame.text : ''), { jsonrpc: '2.0', id: 1, method: 'ping' });
 
   await server.send({ jsonrpc: '2.0', id: 1, result: null });
   const frame = await client.recv();
